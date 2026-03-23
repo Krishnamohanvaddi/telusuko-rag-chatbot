@@ -324,8 +324,51 @@ html, body, [data-testid="stAppViewContainer"] {
 /* ── Sidebar toggle — bright indigo pill, impossible to miss ── */
 [data-testid="stSidebarCollapseButton"],
 [data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"] {
+[data-testid="collapsedControl"],
+[data-testid="stSidebarNavItems"],
+section[data-testid="stSidebar"] ~ div button,
+.eyeqlp50,
+div[class*="collapsedControl"] {
     opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] button,
+section[data-testid="stSidebar"] ~ div button,
+div[class*="collapsedControl"] button,
+button[aria-label="Close sidebar"],
+button[aria-label="Open sidebar"],
+button[aria-label="collapse sidebar"],
+button[aria-label="expand sidebar"] {
+    background: rgba(99,102,241,0.25) !important;
+    border: 1px solid rgba(99,102,241,0.6) !important;
+    border-radius: 8px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    box-shadow: 0 0 12px rgba(99,102,241,0.3) !important;
+    transition: all 0.2s ease !important;
+}
+
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="collapsedControl"] svg,
+section[data-testid="stSidebar"] ~ div button svg,
+div[class*="collapsedControl"] svg,
+button[aria-label="Close sidebar"] svg,
+button[aria-label="Open sidebar"] svg,
+button[aria-label="collapse sidebar"] svg,
+button[aria-label="expand sidebar"] svg {
+    fill: #C7D2FE !important;
+    stroke: #C7D2FE !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 16px !important;
+    height: 16px !important;
 }
 
 [data-testid="stSidebarCollapseButton"] button,
