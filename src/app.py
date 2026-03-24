@@ -588,7 +588,7 @@ if st.session_state.sidebar_open:
 st.markdown("""
 <div style="padding:2rem 1rem 1rem;">
     <div class="main-title">TELUSUKO DOC BOT</div>
-    <div class="main-subtitle">Em Kavaloo · Upload Chesi wait chey · Adukko</div>
+    <div class="main-subtitle">Em Kavaloo · Upload Chey · Adukko</div>
 </div>
 """, unsafe_allow_html=True)
 
