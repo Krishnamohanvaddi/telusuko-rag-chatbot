@@ -14,7 +14,7 @@ from utils.qa_chain import build_qa_chain
 load_dotenv()
 
 st.set_page_config(
-    page_title="TELUSUKO — Document Intelligence",
+    page_title="TELUSUKO — Document QA",
     page_icon="✦",
     layout="wide",
     initial_sidebar_state="expanded"
