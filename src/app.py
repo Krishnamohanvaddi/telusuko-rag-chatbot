@@ -410,16 +410,13 @@ if "processed_file_names" not in st.session_state:
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 # ── Sidebar Toggle Button ─────────────────────────────────────────────────────
-colA, colB = st.columns([1, 20])
 
-with colA:
-    if st.session_state.sidebar_open:
-        if st.button("❌", key="close_sidebar"):
-            st.session_state.sidebar_open = False
-    else:
-        if st.button("☰", key="open_sidebar"):
-            st.session_state.sidebar_open = True
-            st.rerun()
+if st.session_state.sidebar_open:
+    if st.button("❌", key="close_sidebar"):
+        st.session_state.sidebar_open = False
+else:
+    if st.button("☰", key="open_sidebar"):
+        st.session_state.sidebar_open = True
             
 # force UI refresh (important for cloud)
 st.write("")
