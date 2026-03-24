@@ -63,7 +63,8 @@ div[class*="collapsedControl"] {
     background: rgba(10,12,18,0.95) !important;
     border-right: 1px solid rgba(255,255,255,0.06) !important;
     backdrop-filter: blur(20px) !important;
-    transform: none !important;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
     width: 22rem !important;
     min-width: 22rem !important;
     max-width: 22rem !important;
@@ -73,6 +74,21 @@ div[class*="collapsedControl"] {
     padding: 2rem 1.5rem !important;
 }
 
+/* ── Sidebar Toggle Buttons ── */
+button[kind="secondary"] {
+    font-size: 28px !important;
+    padding: 0.6rem 0.8rem !important;
+    border-radius: 12px !important;
+    background: rgba(99,102,241,0.2) !important;
+    border: 1px solid rgba(99,102,241,0.5) !important;
+    color: #A5B4FC !important;
+    transition: all 0.2s ease !important;
+}
+
+button[kind="secondary"]:hover {
+    background: rgba(99,102,241,0.35) !important;
+    transform: scale(1.15);
+}
 /* ── Brand ── */
 .brand-header {
     margin-bottom: 2.5rem;
@@ -381,6 +397,8 @@ hr, [data-testid="stDivider"] {
 """, unsafe_allow_html=True)
 
 # ── Session state ──────────────────────────────────────────────────────────────
+if "sidebar_open" not in st.session_state:
+    st.session_state.sidebar_open = True
 if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = None
 if "chat_history" not in st.session_state:
@@ -391,163 +409,183 @@ if "processed_file_names" not in st.session_state:
     st.session_state.processed_file_names = []
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
-with st.sidebar:
+# ── Sidebar Toggle Button ─────────────────────────────────────────────────────
+colA, colB = st.columns([1, 20])
 
-    st.markdown("""
-    <div class="brand-header">
-        <div class="brand-name">✦ Telusuko</div>
-        <div class="brand-tagline">Document Intelligence</div>
-    </div>
-    """, unsafe_allow_html=True)
+with colA:
+    if st.session_state.sidebar_open:
+        if st.button("❌", key="close_sidebar"):
+            st.session_state.sidebar_open = False
+            st.rerun()
+    else:
+        if st.button("☰", key="open_sidebar"):
+            st.session_state.sidebar_open = True
+            st.rerun()
+            
 
-    st.markdown('<div class="section-label">Documents</div>', unsafe_allow_html=True)
 
-    uploaded_files = st.file_uploader(
-        label="Drop PDFs here",
-        type=["pdf"],
-        accept_multiple_files=True,
-        label_visibility="collapsed"
-    )
+# ── Sidebar ────────────────────────────────────────────────────────────────────
+if st.session_state.sidebar_open:
+    with st.sidebar:
+
+        st.markdown("""
+        <div class="brand-header">
+            <div class="brand-name">✦ Telusuko</div>
+            <div class="brand-tagline">Document Intelligence</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="section-label">Documents</div>', unsafe_allow_html=True)
+
+        uploaded_files = st.file_uploader(
+            label="Drop PDFs here",
+            type=["pdf"],
+            accept_multiple_files=True,
+            label_visibility="collapsed"
+        )
+
+        # KEEP EVERYTHING SAME BELOW 👇
+        # (DO NOT CHANGE ANYTHING INSIDE)
 
     # ── Detect file removal ────────────────────────────────────────────────────
-    if not uploaded_files:
+        if not uploaded_files:
+            if st.session_state.docs_processed:
+                st.session_state.vectorstore = None
+                st.session_state.docs_processed = False
+                st.session_state.processed_file_names = []
+
+        if uploaded_files:
+            current_file_names = [f.name for f in uploaded_files]
+            removed_files = set(st.session_state.processed_file_names) - set(current_file_names)
+
+            if removed_files and st.session_state.docs_processed:
+                st.markdown(f"""
+                <div class="status-badge status-warning">
+                    <span class="pulse-dot"></span>
+                    Removed: {', '.join(removed_files)}
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.vectorstore = None
+                st.session_state.docs_processed = False
+
+            if st.session_state.processed_file_names:
+                for fname in st.session_state.processed_file_names:
+                    st.markdown(f'<div class="file-tag">📄 {fname}</div>', unsafe_allow_html=True)
+
+            files_changed = set(current_file_names) != set(st.session_state.processed_file_names)
+            btn_label = "↻  Re-Process Documents" if (files_changed and st.session_state.processed_file_names) else "⚙  Start Processing"
+
+            if st.button(btn_label, type="primary"):
+                with st.spinner("Indexing..."):
+                    all_docs = []
+                    for file in uploaded_files:
+                        docs = load_pdf(file)
+                        all_docs.extend(docs)
+                    chunks = split_documents(all_docs)
+                    vectorstore = build_vectorstore(chunks)
+                    st.session_state.vectorstore = vectorstore
+                    st.session_state.docs_processed = True
+                    st.session_state.processed_file_names = current_file_names
+                st.success(f"✓ {len(uploaded_files)} file(s) · {len(chunks)} chunks")
+
+        # ── Status ─────────────────────────────────────────────────────────────────
+        st.markdown('<div class="section-label">Status</div>', unsafe_allow_html=True)
+
         if st.session_state.docs_processed:
-            st.session_state.vectorstore = None
-            st.session_state.docs_processed = False
-            st.session_state.processed_file_names = []
-
-    if uploaded_files:
-        current_file_names = [f.name for f in uploaded_files]
-        removed_files = set(st.session_state.processed_file_names) - set(current_file_names)
-
-        if removed_files and st.session_state.docs_processed:
-            st.markdown(f"""
-            <div class="status-badge status-warning">
+            st.markdown("""
+            <div class="status-badge status-ready">
                 <span class="pulse-dot"></span>
-                Removed: {', '.join(removed_files)}
+                Ready to answer
             </div>
             """, unsafe_allow_html=True)
-            st.session_state.vectorstore = None
-            st.session_state.docs_processed = False
+        else:
+            st.markdown("""
+            <div class="status-badge status-waiting">
+                <span class="pulse-dot"></span>
+                Awaiting documents
+            </div>
+            """, unsafe_allow_html=True)
 
-        if st.session_state.processed_file_names:
-            for fname in st.session_state.processed_file_names:
-                st.markdown(f'<div class="file-tag">📄 {fname}</div>', unsafe_allow_html=True)
-
-        files_changed = set(current_file_names) != set(st.session_state.processed_file_names)
-        btn_label = "↻  Re-Process Documents" if (files_changed and st.session_state.processed_file_names) else "⚙  Start Processing"
-
-        if st.button(btn_label, type="primary"):
-            with st.spinner("Indexing..."):
-                all_docs = []
-                for file in uploaded_files:
-                    docs = load_pdf(file)
-                    all_docs.extend(docs)
-                chunks = split_documents(all_docs)
-                vectorstore = build_vectorstore(chunks)
-                st.session_state.vectorstore = vectorstore
-                st.session_state.docs_processed = True
-                st.session_state.processed_file_names = current_file_names
-            st.success(f"✓ {len(uploaded_files)} file(s) · {len(chunks)} chunks")
-
-    # ── Status ─────────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Status</div>', unsafe_allow_html=True)
-
-    if st.session_state.docs_processed:
-        st.markdown("""
-        <div class="status-badge status-ready">
-            <span class="pulse-dot"></span>
-            Ready to answer
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="status-badge status-waiting">
-            <span class="pulse-dot"></span>
-            Awaiting documents
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.divider()
-
-    # ── Voice input ────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Voice Input</div>', unsafe_allow_html=True)
-    components.html("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; } body { background:transparent; }
-        .vbtn {
-            display:flex; align-items:center; justify-content:center; gap:0.5rem;
-            padding:0.6rem 1.4rem; background:rgba(16,185,129,0.08);
-            border:1px solid rgba(16,185,129,0.3); border-radius:24px; color:#34D399;
-            font-family:'Syne',sans-serif; font-size:0.72rem; font-weight:600;
-            letter-spacing:0.12em; text-transform:uppercase; cursor:pointer;
-            transition:all 0.25s ease; width:100%;
-        }
-        .vbtn:hover { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.5); box-shadow:0 0 20px rgba(16,185,129,0.15); }
-        .vbtn.rec { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.45); color:#FCA5A5; animation:rp 1.2s infinite; }
-        @keyframes rp { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3);} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0);} }
-        #vs { margin-top:0.45rem; font-family:'Syne',sans-serif; font-size:0.65rem; color:rgba(232,230,224,0.3); text-align:center; min-height:1rem; }
-    </style>
-    <button class="vbtn" id="vbtn" onclick="toggleVoice()">🎙 &nbsp;Ask with voice</button>
-    <div id="vs"></div>
-    <script>
-        let rec=null,isRec=false;
-        function init(){
-            const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-            if(!SR){document.getElementById('vs').innerText='⚠ Use Chrome';return false;}
-            rec=new SR();rec.continuous=false;rec.interimResults=false;rec.lang='en-US';
-            rec.onstart=()=>{isRec=true;document.getElementById('vbtn').classList.add('rec');document.getElementById('vbtn').innerHTML='⏺ &nbsp;Listening...';document.getElementById('vs').innerText='Speak now...';};
-            rec.onresult=(e)=>{
-                const t=e.results[0][0].transcript;
-                document.getElementById('vs').innerText='✓ '+t;
-                try{
-                    const inp=window.parent.document.querySelector('[data-testid="stChatInput"] textarea');
-                    if(inp){
-                        Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype,'value').set.call(inp,t);
-                        inp.dispatchEvent(new Event('input',{bubbles:true}));
-                        setTimeout(()=>{inp.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));},500);
-                    }
-                }catch(err){document.getElementById('vs').innerText='⚠ '+err.message;}
-            };
-            rec.onerror=(e)=>{document.getElementById('vs').innerText='✗ '+e.error;reset();};
-            rec.onend=()=>{isRec=false;reset();};
-            return true;
-        }
-        function reset(){document.getElementById('vbtn').classList.remove('rec');document.getElementById('vbtn').innerHTML='🎙 &nbsp;Ask with voice';}
-        function toggleVoice(){
-            if(!rec&&!init())return;
-            if(isRec){rec.stop();}else{try{rec.start();}catch(e){init();rec.start();}}
-        }
-    </script>
-    """, height=80)
-
-    st.divider()
-
-    # ── Actions ────────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Actions</div>', unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("✦ New Chat", use_container_width=True):
-            st.session_state.chat_history = []
-            st.rerun()
-    with col2:
-        if st.button("🗑 Clear All", use_container_width=True):
-            st.session_state.chat_history = []
-            st.session_state.vectorstore = None
-            st.session_state.docs_processed = False
-            st.session_state.processed_file_names = []
-            st.rerun()
-
-    # Stats
-    if st.session_state.chat_history:
         st.divider()
-        questions = len(st.session_state.chat_history) // 2
-        st.markdown(
-            f'<div class="session-counter">{questions} question{"s" if questions!=1 else ""} this session</div>',
-            unsafe_allow_html=True
-        )
+
+        # ── Voice input ────────────────────────────────────────────────────────────
+        st.markdown('<div class="section-label">Voice Input</div>', unsafe_allow_html=True)
+        components.html("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700&display=swap');
+            * { box-sizing:border-box; margin:0; padding:0; } body { background:transparent; }
+            .vbtn {
+                display:flex; align-items:center; justify-content:center; gap:0.5rem;
+                padding:0.6rem 1.4rem; background:rgba(16,185,129,0.08);
+                border:1px solid rgba(16,185,129,0.3); border-radius:24px; color:#34D399;
+                font-family:'Syne',sans-serif; font-size:0.72rem; font-weight:600;
+                letter-spacing:0.12em; text-transform:uppercase; cursor:pointer;
+                transition:all 0.25s ease; width:100%;
+            }
+            .vbtn:hover { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.5); box-shadow:0 0 20px rgba(16,185,129,0.15); }
+            .vbtn.rec { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.45); color:#FCA5A5; animation:rp 1.2s infinite; }
+            @keyframes rp { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3);} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0);} }
+            #vs { margin-top:0.45rem; font-family:'Syne',sans-serif; font-size:0.65rem; color:rgba(232,230,224,0.3); text-align:center; min-height:1rem; }
+        </style>
+        <button class="vbtn" id="vbtn" onclick="toggleVoice()">🎙 &nbsp;Ask with voice</button>
+        <div id="vs"></div>
+        <script>
+            let rec=null,isRec=false;
+            function init(){
+                const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+                if(!SR){document.getElementById('vs').innerText='⚠ Use Chrome';return false;}
+                rec=new SR();rec.continuous=false;rec.interimResults=false;rec.lang='en-US';
+                rec.onstart=()=>{isRec=true;document.getElementById('vbtn').classList.add('rec');document.getElementById('vbtn').innerHTML='⏺ &nbsp;Listening...';document.getElementById('vs').innerText='Speak now...';};
+                rec.onresult=(e)=>{
+                    const t=e.results[0][0].transcript;
+                    document.getElementById('vs').innerText='✓ '+t;
+                    try{
+                        const inp=window.parent.document.querySelector('[data-testid="stChatInput"] textarea');
+                        if(inp){
+                            Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype,'value').set.call(inp,t);
+                            inp.dispatchEvent(new Event('input',{bubbles:true}));
+                            setTimeout(()=>{inp.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));},500);
+                        }
+                    }catch(err){document.getElementById('vs').innerText='⚠ '+err.message;}
+                };
+                rec.onerror=(e)=>{document.getElementById('vs').innerText='✗ '+e.error;reset();};
+                rec.onend=()=>{isRec=false;reset();};
+                return true;
+            }
+            function reset(){document.getElementById('vbtn').classList.remove('rec');document.getElementById('vbtn').innerHTML='🎙 &nbsp;Ask with voice';}
+            function toggleVoice(){
+                if(!rec&&!init())return;
+                if(isRec){rec.stop();}else{try{rec.start();}catch(e){init();rec.start();}}
+            }
+        </script>
+        """, height=80)
+
+        st.divider()
+
+        # ── Actions ────────────────────────────────────────────────────────────────
+        st.markdown('<div class="section-label">Actions</div>', unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✦ New Chat", use_container_width=True):
+                st.session_state.chat_history = []
+                st.rerun()
+        with col2:
+            if st.button("🗑 Clear All", use_container_width=True):
+                st.session_state.chat_history = []
+                st.session_state.vectorstore = None
+                st.session_state.docs_processed = False
+                st.session_state.processed_file_names = []
+                st.rerun()
+
+        # Stats
+        if st.session_state.chat_history:
+            st.divider()
+            questions = len(st.session_state.chat_history) // 2
+            st.markdown(
+                f'<div class="session-counter">{questions} question{"s" if questions!=1 else ""} this session</div>',
+                unsafe_allow_html=True
+            )
 
 # ── Main area ──────────────────────────────────────────────────────────────────
 st.markdown("""
