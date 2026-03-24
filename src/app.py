@@ -416,13 +416,13 @@ with colA:
     if st.session_state.sidebar_open:
         if st.button("❌", key="close_sidebar"):
             st.session_state.sidebar_open = False
-            st.rerun()
     else:
         if st.button("☰", key="open_sidebar"):
             st.session_state.sidebar_open = True
             st.rerun()
             
-
+# force UI refresh (important for cloud)
+st.write("")
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 if st.session_state.sidebar_open:
