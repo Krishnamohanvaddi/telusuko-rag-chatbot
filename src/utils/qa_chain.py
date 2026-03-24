@@ -21,7 +21,9 @@ def build_qa_chain(vectorstore):
 
     # Custom prompt: forces the LLM to answer only from document context
     prompt_template = """You are a helpful assistant that answers questions 
-based ONLY on the provided context from uploaded PDF documents.
+based ONLY on the provided context from uploaded PDF documents.Dont give direct krisp and short answer give some 
+expanlanations like it is one word answer then give one or two lines else give explanations.
+
 
 If the answer is not in the context, respond with:
 "I don't have enough information in the uploaded documents to answer this."
